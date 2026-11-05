@@ -61,10 +61,12 @@ def test_server_surface_and_oauth_discovery(settings):
         assert metadata.status_code == 200
         assert metadata.json()["authorization_endpoint"].endswith("/authorize")
         assert metadata.json()["registration_endpoint"].endswith("/register")
+        assert metadata.json()["issuer"] == str(settings.public_base_url)
         assert "offline_access" in metadata.json()["scopes_supported"]
         prm = client.get("/.well-known/oauth-protected-resource/mcp", headers=headers)
         assert prm.status_code == 200
         assert prm.json()["resource"].endswith("/mcp")
+        assert prm.json()["authorization_servers"] == [metadata.json()["issuer"]]
         challenge = client.post(
             "/mcp",
             headers={**headers, "content-type": "application/json"},
@@ -74,7 +76,7 @@ def test_server_surface_and_oauth_discovery(settings):
         assert "resource_metadata" in challenge.headers["www-authenticate"]
         health = client.get("/health/ready", headers=headers).json()
         assert health["status"] == "ready"
-        assert health["version"] == "0.5.0b1"
+        assert health["version"] == "0.5.0b2"
         assert health["tools_count"] == len(EXPECTED_TOOLS)
         assert len(health["surface_sha256"]) == 64
         assert health["last_maintenance"]

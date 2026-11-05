@@ -1,6 +1,6 @@
 [project]
 name = "sellsy-mcp-community"
-version = "0.5.0b1"
+version = "0.5.0b2"
 description = "Self-hosted community MCP server for Sellsy with per-user OAuth and controlled writes"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,7 +13,7 @@ dependencies = [
   "cryptography>=50,<51",
   "httpx>=0.28,<1",
   "pypdf>=6.21.4,<7",
-  "mcp[cli]>=1.30,<3",
+  "mcp[cli]>=2.3,<3",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
   "uvicorn>=0.35,<1",

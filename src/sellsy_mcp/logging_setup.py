@@ -22,6 +22,6 @@ def configure_logging(path):
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     handler.addFilter(SafeLogFilter())
     logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
-    for name in ("httpx", "httpcore", "uvicorn.access"):
+    for name in ("httpx", "httpcore", "httpx2", "httpcore2", "uvicorn.access"):
         logger = logging.getLogger(name)
         logger.disabled = True

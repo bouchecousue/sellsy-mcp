@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from mcp.server.auth.routes import create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -27,7 +27,7 @@ from .tools import Runtime, register_tools
 LOGGER = logging.getLogger(__name__)
 
 
-def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
+def create_server(settings: Settings | None = None) -> tuple[MCPServer, Runtime]:
     settings = settings or Settings()
     settings.prepare_paths()
     store = Store(settings.database_path)
@@ -35,18 +35,9 @@ def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
     provider = SellsyOAuthProvider(settings, store, cipher)
     runtime = Runtime(provider, ManifestStore(store, settings), AuditLog(settings.audit_log_path))
 
-    public_host = urlparse(settings.public_base).netloc
-    transport_security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=[public_host, f"127.0.0.1:{settings.port}", f"localhost:{settings.port}"],
-        allowed_origins=[
-            settings.public_base,
-            f"http://127.0.0.1:{settings.port}",
-            f"http://localhost:{settings.port}",
-        ],
-    )
     auth = AuthSettings(
-        issuer_url=settings.public_base,
+        # Keep the v1 issuer spelling so persisted OAuth clients see the same authority.
+        issuer_url=settings.public_base_url,
         resource_server_url=settings.resource_url,
         validate_token_resource=True,
         client_registration_options=ClientRegistrationOptions(
@@ -58,8 +49,9 @@ def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
         revocation_options=RevocationOptions(enabled=True),
         required_scopes=["sellsy.read"],
     )
-    mcp = FastMCP(
+    mcp = MCPServer(
         name="Sellsy MCP Community",
+        version=settings.version,
         instructions=(
             "Pour un nom ou fragment, utiliser la vraie recherche Sellsy (sellsy_search_native ou les "
             "recherches métier). EXAMPLE suffit pour trouver EXAMPLE PHARMACIENS. Ne jamais conclure à une "
@@ -76,12 +68,6 @@ def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
         ),
         auth_server_provider=provider,
         auth=auth,
-        host=settings.host,
-        port=settings.port,
-        streamable_http_path="/mcp",
-        stateless_http=True,
-        json_response=True,
-        transport_security=transport_security,
     )
 
     @mcp.custom_route("/oauth/callback", methods=["GET"])
@@ -143,7 +129,7 @@ def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
             "name": tool.name,
             "parameters": tool.parameters,
             "description": tool.description,
-            "annotations": tool.annotations.model_dump() if tool.annotations else None,
+            "annotations": tool.annotations.model_dump(by_alias=True) if tool.annotations else None,
         }
         for tool in mcp._tool_manager.list_tools()
     ]
@@ -157,18 +143,34 @@ def create_server(settings: Settings | None = None) -> tuple[FastMCP, Runtime]:
     return mcp, runtime
 
 
-def create_app(mcp: FastMCP, runtime: Runtime):
-    app = mcp.streamable_http_app()
-    # FastMCP 1.x advertises required_scopes as scopes_supported. Read-only is the
+def create_app(mcp: MCPServer, runtime: Runtime):
+    settings = runtime.provider.settings
+    public_host = urlparse(settings.public_base).netloc
+    transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[public_host, f"127.0.0.1:{settings.port}", f"localhost:{settings.port}"],
+        allowed_origins=[
+            settings.public_base,
+            f"http://127.0.0.1:{settings.port}",
+            f"http://localhost:{settings.port}",
+        ],
+    )
+    app = mcp.streamable_http_app(
+        host=settings.host,
+        streamable_http_path="/mcp",
+        stateless_http=True,
+        json_response=True,
+        transport_security=transport_security,
+    )
+    # The SDK advertises required_scopes as scopes_supported. Read-only is the
     # minimum for /mcp, but clients must discover write access before requesting
     # new consent. Replace metadata only; keep the existing auth middleware.
-    settings = runtime.provider.settings
     resource_scopes = ["sellsy.read", "offline_access"] + (
         ["sellsy.write"] if settings.enable_writes else []
     )
     metadata_routes = create_protected_resource_routes(
         resource_url=settings.resource_url,
-        authorization_servers=[settings.public_base],
+        authorization_servers=[settings.public_base_url],
         scopes_supported=resource_scopes,
     )
     metadata_paths = {route.path for route in metadata_routes}
