@@ -1,5 +1,7 @@
 # Sellsy MCP communautaire
 
+![Sellsy MCP Community : connecter son CRM aux assistants IA](../assets/social-preview.jpg)
+
 Ce serveur permet à un client MCP d'interroger Sellsy avec l'identité et les droits
 de chaque collaborateur. Il est proposé par BoucheCousue sous licence MIT.
 Ce n'est pas un produit officiel Sellsy.

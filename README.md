@@ -1,5 +1,7 @@
 # Sellsy MCP Community
 
+![Sellsy MCP Community — Connect your CRM to AI](assets/social-preview.jpg)
+
 A self-hosted [Model Context Protocol](https://modelcontextprotocol.io/) server for
 [Sellsy API v2](https://docs.sellsy.com/api/v2/). Connect an MCP client to your CRM
 using each person's own Sellsy identity.
