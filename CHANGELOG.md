@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0b2 - MCP SDK v2
+
+- Migrate from `FastMCP` to the official SDK 2.3 `MCPServer` API and configure
+  Streamable HTTP transport when creating the ASGI app.
+- Preserve the existing OAuth issuer spelling, token storage, optional write
+  scopes, stateless JSON transport and DNS-rebinding protections.
+- Retain camelCase MCP annotation serialization and expose the application version.
+- Suppress the SDK's new HTTP client loggers alongside the existing ones.
+- Add HTTP regression coverage for dynamic registration, authenticated
+  prepare/apply with untouched rows and replay refusal, revoked tokens and audience checks.
+- Update pinned GitHub Actions, runtime lockfile and third-party notices.
+
 ## 0.5.0b1 - first community beta
 
 - Standalone source distribution with an MIT license and synthetic test data.

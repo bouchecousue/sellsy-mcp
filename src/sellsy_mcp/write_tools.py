@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .errors import ToolError, error_result
 from .manifests import changed_sections, fingerprint, section_fingerprints
@@ -166,7 +166,7 @@ async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: st
     return response
 
 
-def register_estimate_tools(mcp: FastMCP, runtime: Runtime) -> None:
+def register_estimate_tools(mcp: MCPServer, runtime: Runtime) -> None:
     @runtime.tool(
         mcp,
         name="sellsy_prepare_opportunity_update",

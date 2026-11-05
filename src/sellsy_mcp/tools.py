@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .dates import in_period
 from .errors import error_result, partial_results
@@ -146,7 +146,7 @@ async def _search_comments_live(client: SellsyClient, params: CommentSearch) -> 
     )
 
 
-def register_tools(mcp: FastMCP, runtime: Runtime) -> None:
+def register_tools(mcp: MCPServer, runtime: Runtime) -> None:
     @runtime.tool(
         mcp,
         name="sellsy_search_estimates",

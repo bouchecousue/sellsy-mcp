@@ -29,6 +29,9 @@ Requirements: Python 3.11+ and [uv](https://docs.astral.sh/uv/). Create your own
 Sellsy **Private** OAuth application with authorization-code flow, PKCE, refresh
 tokens, the scopes listed in `.env.example` and your exact callback URL.
 
+The server uses the official **MCP Python SDK 2.3+** (`MCPServer`). See the
+[SDK v2 migration notes](docs/sdk-v2.md) when upgrading an existing instance.
+
 ```sh
 git clone https://github.com/bouchecousue/sellsy-mcp.git
 cd sellsy-mcp

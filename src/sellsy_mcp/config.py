@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     request_concurrency: int = Field(default=4, ge=1, le=10)
     maintenance_interval_seconds: int = Field(default=3600, ge=60)
     enable_writes: bool = False
-    version: str = "0.5.0b1"
+    version: str = "0.5.0b2"
     file_download_hosts: list[str] = Field(default_factory=list)
 
     @field_validator("public_base_url")
