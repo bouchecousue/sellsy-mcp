@@ -30,6 +30,9 @@ public multi-organization hosting service.
 Requirements: Python 3.11+ and [uv](https://docs.astral.sh/uv/). Create your own
 Sellsy **Private** OAuth application with authorization-code flow, PKCE, refresh
 tokens, the scopes listed in `.env.example` and your exact callback URL.
+Follow the [Sellsy setup walkthrough](docs/configuration.md#create-the-sellsy-client)
+or the [guide pas à pas en français](docs/configuration.fr.md) for the developer
+portal, scope selection and first connection.
 
 The server uses the official **MCP Python SDK 2.3+** (`MCPServer`). See the
 [SDK v2 migration notes](docs/sdk-v2.md) when upgrading an existing instance.
@@ -92,6 +95,7 @@ is an API contract, not an independent human-approval interface or sandbox.
 
 - [Tool catalog](docs/tools.md)
 - [Configuration and OAuth troubleshooting](docs/configuration.md)
+- [Configuration de Sellsy et connexion du MCP (français)](docs/configuration.fr.md)
 - [Deployment and administration](docs/deployment.md)
 - [Security model and limitations](docs/security-model.md)
 - [Contributing and tests](CONTRIBUTING.md)

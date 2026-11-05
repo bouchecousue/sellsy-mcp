@@ -1,5 +1,9 @@
 # Deployment and administration
 
+First complete [Sellsy API access setup](configuration.md#create-the-sellsy-client)
+([français](configuration.fr.md)): create your Private client, register the
+callback and copy your credentials into `.env`.
+
 Use one instance and one persistent state directory per organization. Supply
 your own Sellsy client and HTTPS origin. Keep the process behind a TLS reverse
 proxy or tunnel forwarding the whole origin, including `/mcp`, `/authorize`,

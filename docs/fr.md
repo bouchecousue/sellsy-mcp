@@ -18,3 +18,8 @@ Les descriptions d'outils et la plupart des messages sont en français.
 Consulter le [guide de démarrage](../README.md), la [configuration](configuration.md),
 le [déploiement](deployment.md) et les [limites de sécurité](security-model.md).
 Les tests fonctionnent sans identifiants et sans appel à un compte Sellsy réel.
+
+Pour installer votre instance, suivez le
+[guide de configuration de Sellsy en français](configuration.fr.md) : création
+de l'accès API privé, URL de redirection, scopes à cocher, fichier `.env`,
+connexion des collaborateurs et activation optionnelle des écritures.
