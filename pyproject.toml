@@ -1,0 +1,57 @@
+[project]
+name = "sellsy-mcp-community"
+version = "0.5.0b1"
+description = "Self-hosted community MCP server for Sellsy with per-user OAuth and controlled writes"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "BoucheCousue and contributors"}]
+keywords = ["sellsy", "mcp", "oauth", "crm"]
+classifiers = ["Development Status :: 4 - Beta", "Programming Language :: Python :: 3"]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "cryptography>=50,<51",
+  "httpx>=0.28,<1",
+  "pypdf>=6.21.4,<7",
+  "mcp[cli]>=1.30,<2",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.10,<3",
+  "uvicorn>=0.35,<1",
+]
+
+[project.urls]
+Repository = "https://github.com/bouchecousue/sellsy-mcp"
+Issues = "https://github.com/bouchecousue/sellsy-mcp/issues"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4,<10",
+  "pyyaml>=6,<7",
+  "pytest-asyncio>=1.1,<2",
+  "respx>=0.22,<1",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+sellsy-mcp = "sellsy_mcp.server:main"
+sellsy-mcp-admin = "sellsy_mcp.admin:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sellsy_mcp"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

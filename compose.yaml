@@ -1,0 +1,21 @@
+services:
+  sellsy-mcp:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SELLSY_MCP_HOST: 0.0.0.0
+      SELLSY_MCP_DATABASE_PATH: /app/var/sellsy-mcp.sqlite3
+      SELLSY_MCP_ENCRYPTION_KEY_FILE: /app/var/fernet.key
+      SELLSY_MCP_AUDIT_LOG_PATH: /app/var/audit.jsonl
+    ports:
+      - "127.0.0.1:8766:8766"
+    volumes:
+      - state:/app/var
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  state:

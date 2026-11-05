@@ -1,0 +1,28 @@
+{
+  "url": "https://docs.sellsy.com/api/v2/dist/sellsy.v2.latest.yaml",
+  "api_version": "2.316.0",
+  "operations": {
+    "GET /search": "8edb2544f5841ab67d4edf4916162ada2b745ea91f5a762154f3b7491f8548a7",
+    "POST /companies/search": "46137a8654dad7dc2a19b0432026ab79e5f512946fe7f7085cd8dfed50cba569",
+    "POST /contacts/search": "f87e3d9a2879fba6f3aa4c94ee6f231d7a6c14b2c606fcddc63cad71a62930ea",
+    "POST /items/search": "e235d0b154599d81d855b97c03dc0ff6f3c570177c7ef4a7aef517d8d2d7c885",
+    "POST /estimates/search": "24f000b16dd8cefbcbc891411865550d169da07759948fe4b231f2aa7f992aa6",
+    "POST /invoices/search": "b9154d502853e142e2e31f50716cbe3f7009f6e0ff0768570d473bc72b6366de",
+    "POST /credit-notes/search": "d1bd8ad06ca492e62a3de5b7a6b6afd50a2fd596ce246a044633cd2f5744e459",
+    "POST /orders/search": "cfbad2bc741abd53ed9830afc068dda6f055d97a0d65e6b62044ff7151bcf3eb",
+    "POST /deliveries/search": "75540bfc9d42f36e231b6ba0348b2bac62a9ad6573dbac52b1db34ea88ca311f",
+    "POST /staffs/search": "f91fb50f92d46aa809233372ff3b23d9730387aa65764e420a44e21ece8ca234",
+    "POST /subscriptions/search": "5922656216f69d2360e11bc737c6a83a9ae1c8c6418da483d11768fbbea0f8f3",
+    "POST /opportunities/search": "a466d6e5f70d6b7529e78aecd1c7c3e805effd775781372e1f1ba0098d3f6801",
+    "POST /comments/search": "329a7251f06832ce4405f2a1bb03f064dfafe22fb7f8deebeab435878b3ec480",
+    "POST /estimates": "33f09605c7625d9527d83d1061970912c3452e5565cdd11a3caba88b0f133cc6",
+    "PUT /estimates/{id}": "d500dad0ede3befdd093839cf3e8243888d6f4192ed5700564c10a7aaf13215a",
+    "POST /opportunities": "e8f98f0ec0d3453e69dceb0dbab282e8ec228a7666cb3fd2d026568a6a1d144d",
+    "GET /opportunities/{id}": "a7438a4a91e7b3ca38c96f15b1ce4a7b168f7953576aaa2a52d4f0e3ad9c463f",
+    "GET /opportunities/pipelines": "5e8b6770f27998eadcb3242d4771c4bb2416cd16110d1a0621b212f9971152cc",
+    "GET /opportunities/pipelines/{pipelineId}/steps": "2939f22ac503b7b3108213690e29c26b85dabc03a5ee3497de1d92c0b0909830",
+    "POST /subscriptions/payment-installments/search": "ba2d7846bf0ad0e37e926f68b6e2cb1352ad44d9f3b013405c1f00d48458c479",
+    "GET /files/{id}": "b1affb29c5cd21087a4f88c01a0c245a59ff5d502b989e45abf1d3d84920ea3f",
+    "GET /taxes": "b22d81371238d88f641f6a49152d281cc03bc527cdec7e82c5c987b1e781dd33"
+  }
+}

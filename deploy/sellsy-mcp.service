@@ -1,0 +1,22 @@
+[Unit]
+Description=Sellsy MCP Community
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sellsy-mcp
+Group=sellsy-mcp
+WorkingDirectory=/opt/sellsy-mcp
+ExecStart=/opt/sellsy-mcp/.venv/bin/sellsy-mcp
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/sellsy-mcp/var
+
+[Install]
+WantedBy=multi-user.target

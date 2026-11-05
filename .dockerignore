@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+.venv
+var
+dist
+build
+tests
+.pytest_cache
+.ruff_cache
+__pycache__
+*.log
+*.sqlite*
+*.fernet
+*.key
