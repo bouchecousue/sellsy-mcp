@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 dependencies = [
   "cryptography>=50,<51",
   "httpx>=0.28,<1",
-  "pypdf>=6.21.4,<7",
+  "pypdf>=6.21.4,<8",
   "mcp[cli]>=2.3,<3",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
