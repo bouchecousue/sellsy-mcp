@@ -286,12 +286,22 @@ class EstimateRowPatch(StrictModel):
 
 class EstimateUpdate(StrictModel):
     estimate_id: int = Field(gt=0)
-    rows: list[EstimateRowPatch] = Field(min_length=1, max_length=500)
+    subject: str | None = Field(None, description="Nouvel objet du devis. Omettre pour le conserver.")
+    rows: list[EstimateRowPatch] = Field(default_factory=list, max_length=500)
+    add_rows: list[EstimateCreateRow] = Field(
+        default_factory=list, max_length=500, description="Lignes libres ou catalogue à ajouter à la fin."
+    )
+    remove_row_ids: list[Annotated[int, Field(gt=0)]] = Field(
+        default_factory=list, max_length=500, description="IDs des lignes existantes à supprimer."
+    )
 
     @model_validator(mode="after")
-    def unique_rows(self):
-        if len({row.id for row in self.rows}) != len(self.rows):
-            raise ValueError("Chaque ID de ligne doit être unique.")
+    def validate_changes(self):
+        if self.subject is None and not (self.rows or self.add_rows or self.remove_row_ids):
+            raise ValueError("Indiquer un objet ou une modification de lignes.")
+        target_ids = [row.id for row in self.rows] + self.remove_row_ids
+        if len(set(target_ids)) != len(target_ids):
+            raise ValueError("Chaque ligne peut être modifiée ou supprimée une seule fois.")
         return self
 
     include_costs_in_preview: bool = Field(
