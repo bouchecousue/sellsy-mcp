@@ -25,7 +25,16 @@ from .opportunity_validation import (
 )
 from .presentation import _without_costs
 from .runtime import READ_HINTS, WRITE_HINTS, Runtime
-from .write_validation import mismatches, snapshot, validate_creation, validate_taxes, validate_transition
+from .write_validation import (
+    estimate_update_mismatches,
+    estimate_update_plan,
+    mismatches,
+    new_estimate_rows,
+    snapshot,
+    validate_creation,
+    validate_estimate_rows,
+    validate_transition,
+)
 
 
 async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: str) -> dict[str, Any]:
@@ -68,6 +77,8 @@ async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: st
             await validate_creation(client, manifest["payload"])
             expected = manifest["payload"]
         else:
+            if operation == "estimate.update":
+                await validate_estimate_rows(client, manifest["payload"].get("rows", []))
             before = await client.get(f"/estimates/{object_id}")
             if fingerprint(before) != manifest["before_fingerprint"]:
                 raise ToolError(
@@ -78,7 +89,6 @@ async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: st
             if operation == "estimate.update":
                 if before.get("status") != "draft":
                     raise ToolError("not_editable", "Seuls les devis brouillons sont modifiables.")
-                await validate_taxes(client, manifest["payload"]["rows"])
                 expected = manifest["checks"].get("expected")
                 if not expected:
                     raise ToolError(
@@ -104,11 +114,12 @@ async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: st
         result["write_response_received"] = True
         runtime.manifests.outcome(params.manifest_id, grant_id, result)
         live = await client.get(f"{collection}/{object_id}")
-        issues = (
-            opportunity_mismatches(expected, live)
-            if object_type == "opportunity"
-            else mismatches(expected, live)
-        )
+        if operation == "estimate.update":
+            issues = estimate_update_mismatches(expected, live, before)
+        elif object_type == "opportunity":
+            issues = opportunity_mismatches(expected, live)
+        else:
+            issues = mismatches(expected, live)
         if operation == "opportunity.create" and expected.get("main_doc_id"):
             estimate = await client.get(f"/estimates/{expected['main_doc_id']}")
             if not has_relation(estimate, "opportunity", object_id):
@@ -291,17 +302,9 @@ def register_estimate_tools(mcp: MCPServer, runtime: Runtime) -> None:
             and not params.include_costs_in_preview
         ):
             raise ValueError("Un coût modifié doit être visible dans l’aperçu approuvé.")
-        rows = []
-        for row in params.rows:
-            values = row.model_dump(exclude_none=True)
-            item_id, kind = values.pop("item_id", None), values.pop("related_type", None)
-            if row.type == "catalog":
-                item = await client.get(f"/items/{item_id}")
-                kind = kind or item.get("type")
-                if kind != item.get("type") or kind not in {"product", "service", "packaging", "shipping"}:
-                    raise ValueError("Le type doit correspondre à l’article du catalogue.")
-                values["related"] = {"id": item_id, "type": kind}
-            rows.append(values)
+        rows = await new_estimate_rows(
+            client, params.rows, catalog_types=("product", "service", "packaging", "shipping")
+        )
         payload = {
             "related": [{"type": "company", "id": params.company_id}],
             "status": "draft",
@@ -330,45 +333,17 @@ def register_estimate_tools(mcp: MCPServer, runtime: Runtime) -> None:
         annotations=READ_HINTS,
     )
     async def prepare_estimate_update(params: EstimateUpdate) -> dict[str, Any]:
-        """Prépare des modifications de lignes d’un brouillon avec contrôle de taxes et état attendu."""
+        """Prépare l’objet et les lignes d’un devis brouillon. rows modifie des lignes par ID,
+        add_rows ajoute en fin de devis, remove_row_ids supprime par ID. Présenter le diff avant validation.
+        """
         grant_id, client = runtime.context(write=True)
         if (
-            any(row.purchase_amount is not None for row in params.rows)
+            any(row.purchase_amount is not None for row in [*params.rows, *params.add_rows])
             and not params.include_costs_in_preview
         ):
             raise ValueError("Un coût modifié doit être visible dans l’aperçu approuvé.")
         live = await client.get(f"/estimates/{params.estimate_id}")
-        if live.get("status") != "draft":
-            raise ToolError("not_editable", "Seuls les devis brouillons sont modifiables.")
-        expected = snapshot(live)
-        current = {row["id"]: row for row in expected["rows"] if row.get("id")}
-        patches, diff = [], []
-        for patch in params.rows:
-            if patch.id not in current:
-                raise ValueError(f"Ligne inconnue : {patch.id}")
-            values = patch.model_dump(exclude_none=True)
-            values.setdefault("description", current[patch.id].get("description") or "")
-            changes = {
-                key: {"before": current[patch.id].get(key), "after": value}
-                for key, value in values.items()
-                if key != "id" and mismatches({key: value}, current[patch.id])
-            }
-            if not changes:
-                raise ValueError(f"Aucune modification effective sur la ligne {patch.id}")
-            current[patch.id].update(values)
-            patches.append(values)
-            diff.append({"row_id": patch.id, "changes": changes})
-        await validate_taxes(client, patches)
-        # Explicitly preserve omitted row IDs; no add/delete capability in this tool.
-        touched = {row["id"] for row in patches}
-        payload = {
-            "rows": [
-                next(row for row in patches if row["id"] == old["id"])
-                if old.get("id") in touched
-                else {"id": old["id"]}
-                for old in live["rows"]
-            ]
-        }
+        payload, expected, diff = await estimate_update_plan(client, live, params)
         manifest = runtime.manifests.create(
             grant_id=grant_id,
             operation="estimate.update",

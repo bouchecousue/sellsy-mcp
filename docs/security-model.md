@@ -20,8 +20,9 @@ matching Sellsy callbacks and client reconnection.
 Writes are disabled by default. Operator opt-in, MCP write scope, relevant Sellsy
 consent and staff ACLs are separate requirements. A preparation creates a
 per-user short-lived manifest; applying it requires explicit approval and claims
-it once. Existing rows are preserved and live preconditions are checked before
-writing. The result is persisted and compared with a fresh readback.
+it once. Draft estimate updates preserve the order of retained rows, append new rows and
+remove only explicitly selected row IDs. The preview identifies each change.
+The server checks live preconditions before writing. The result is persisted and compared with a fresh readback.
 
 The MCP client must obtain human approval. The server's `approved` parameter
 cannot independently prove a human clicked an approval control. Customer

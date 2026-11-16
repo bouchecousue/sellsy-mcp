@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from .errors import ToolError
+from .models import EstimateCreateRow, EstimateUpdate
 from .pagination import require_complete
 
 ROW_FIELDS = {
@@ -19,6 +20,13 @@ ROW_FIELDS = {
     "discount",
     "unit_id",
     "parent",
+    "text",
+    "is_optional",
+    "eco_tax",
+    "sku_id",
+    "warehouse_id",
+    "accounting_code_id",
+    "analytic_code",
     "is_printable",
     "is_totaled",
 }
@@ -47,7 +55,7 @@ TRANSITIONS = {
 def snapshot(document: dict[str, Any]) -> dict[str, Any]:
     return {
         **{k: v for k, v in document.items() if k in DOCUMENT_FIELDS},
-        "rows": [{k: v for k, v in row.items() if k in ROW_FIELDS} for row in document.get("rows", [])],
+        "rows": [{k: v for k, v in row.items() if k in ROW_FIELDS} for row in (document.get("rows") or [])],
     }
 
 
@@ -114,14 +122,123 @@ async def validate_creation(client: Any, payload: dict[str, Any]) -> dict[str, A
                 raise ToolError(
                     "address_company_mismatch", "Adresse non vérifiée pour ce client.", field=name
                 )
-    await validate_taxes(client, payload["rows"])
-    for row in payload["rows"]:
-        if row.get("type") == "catalog":
-            related = row["related"]
-            item = await client.get(f"/items/{related['id']}")
-            if item.get("is_archived") or item.get("type") != related["type"]:
-                raise ToolError("invalid_catalog_item", "Article archivé ou type incohérent.")
+    await validate_estimate_rows(client, payload["rows"])
     return company
+
+
+async def catalog_item_type(client: Any, item_id: int, expected_type: str | None) -> str:
+    item = await client.get(f"/items/{item_id}")
+    kind = item.get("type")
+    if (
+        item.get("id") != item_id
+        or item.get("is_archived")
+        or kind not in {"product", "service", "packaging", "shipping"}
+        or (expected_type is not None and kind != expected_type)
+    ):
+        raise ToolError("invalid_catalog_item", "Article archivé, inconnu ou type incohérent.")
+    return kind
+
+
+async def validate_estimate_rows(client: Any, rows: list[dict[str, Any]]) -> None:
+    await validate_taxes(client, rows)
+    for row in rows:
+        if row.get("type") == "catalog":
+            await catalog_item_type(client, row["related"]["id"], row["related"]["type"])
+
+
+async def new_estimate_rows(
+    client: Any, rows: list[EstimateCreateRow], *, catalog_types: tuple[str, ...]
+) -> list[dict[str, Any]]:
+    result = []
+    for row in rows:
+        values = row.model_dump(exclude_none=True, exclude={"item_id", "related_type"})
+        if row.type == "catalog":
+            kind = await catalog_item_type(client, row.item_id, row.related_type)
+            if kind not in catalog_types:
+                raise ValueError(f"Type d’article incompatible avec cette ligne catalogue : {kind}")
+            values["related"] = {"id": row.item_id, "type": kind}
+        result.append(values)
+    return result
+
+
+async def estimate_update_plan(
+    client: Any, live: dict[str, Any], params: EstimateUpdate
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    if (
+        live.get("id") != params.estimate_id
+        or "rows" not in live
+        or not isinstance(live["rows"], list | None)
+    ):
+        raise ToolError("invalid_response", "Impossible de vérifier le devis et ses lignes.")
+    if live.get("status") != "draft":
+        raise ToolError("not_editable", "Seuls les devis brouillons sont modifiables.")
+    expected = snapshot(live)
+    current = {row.get("id"): row for row in expected["rows"]}
+    if len(current) != len(expected["rows"]) or any(type(i) is not int or i <= 0 for i in current):
+        raise ToolError("invalid_response", "Impossible d’identifier chaque ligne du devis.")
+    patches = {row.id: row for row in params.rows}
+    removed = set(params.remove_row_ids)
+    unknown = (patches.keys() | removed) - current.keys()
+    if unknown:
+        raise ValueError(f"Lignes inconnues : {sorted(unknown)}")
+
+    payload: dict[str, Any] = {}
+    diff = []
+    if params.subject is not None and params.subject != live.get("subject"):
+        diff.append({"field": "subject", "before": live.get("subject"), "after": params.subject})
+        payload["subject"] = expected["subject"] = params.subject
+
+    if patches or removed or params.add_rows:
+        wire_rows = []
+        kept = []
+        for row_id, row in current.items():
+            if row_id in removed:
+                diff.append({"operation": "remove", "row_id": row_id, "before": row})
+                continue
+            values = {"id": row_id}
+            if row_id in patches:
+                values.update(patches[row_id].model_dump(exclude_none=True))
+                changes = {
+                    key: {"before": row.get(key), "after": value}
+                    for key, value in values.items()
+                    if key != "id" and mismatches({key: value}, row)
+                }
+                if not changes:
+                    raise ValueError(f"Aucune modification effective sur la ligne {row_id}")
+                if row.get("description") is not None:
+                    values.setdefault("description", row["description"])
+                row.update(values)
+                diff.append({"row_id": row_id, "changes": changes})
+            kept.append(row)
+            wire_rows.append(values)
+        additions = await new_estimate_rows(client, params.add_rows, catalog_types=("product", "service"))
+        diff.extend({"operation": "add", "after": row} for row in additions)
+        expected["rows"] = kept + additions
+        payload["rows"] = wire_rows + additions
+        await validate_taxes(client, payload["rows"])
+    if not diff:
+        raise ValueError("Aucune modification effective du devis.")
+    return payload, expected, diff
+
+
+def estimate_update_mismatches(expected: dict, actual: dict, before: dict) -> list[str]:
+    issues = mismatches({k: v for k, v in expected.items() if k != "rows"}, actual)
+    actual_rows = [] if "rows" in actual and actual["rows"] is None else actual.get("rows")
+    if not isinstance(actual_rows, list) or len(expected["rows"]) != len(actual_rows):
+        return [*issues, "rows.count"]
+    original_ids = {row["id"] for row in (before["rows"] or [])}
+    seen = set()
+    for i, (wanted, found) in enumerate(zip(expected["rows"], actual_rows, strict=True)):
+        path = f"rows[{i}]"
+        row_id = found.get("id") if isinstance(found, dict) else None
+        if type(row_id) is not int or row_id <= 0 or row_id in seen:
+            issues.append(f"{path}.id")
+            continue
+        if "id" not in wanted and row_id in original_ids:
+            issues.append(f"{path}.id")
+        seen.add(row_id)
+        issues.extend(mismatches(wanted, found, path))
+    return issues
 
 
 def validate_transition(before: str, after: str) -> None:
