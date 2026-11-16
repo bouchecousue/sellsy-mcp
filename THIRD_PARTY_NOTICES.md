@@ -37,7 +37,7 @@ Regenerate this inventory when updating dependencies.
 | pydantic_core | 2.50.4 | MIT |
 | Pygments | 2.21.0 | BSD-2-Clause |
 | PyJWT | 2.15.1 | MIT |
-| pypdf | 6.21.4 | BSD-3-Clause |
+| pypdf | 7.0.0 | BSD-3-Clause |
 | python-dotenv | 1.2.4 | BSD-3-Clause |
 | python-multipart | 0.0.33 | Apache-2.0 |
 | referencing | 0.37.0 | MIT |
