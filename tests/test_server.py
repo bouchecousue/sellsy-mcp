@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from importlib.metadata import version
+
 import pytest
 from starlette.testclient import TestClient
 
@@ -76,7 +78,7 @@ def test_server_surface_and_oauth_discovery(settings):
         assert "resource_metadata" in challenge.headers["www-authenticate"]
         health = client.get("/health/ready", headers=headers).json()
         assert health["status"] == "ready"
-        assert health["version"] == "0.5.0b2"
+        assert health["version"] == version("sellsy-mcp-community")
         assert health["tools_count"] == len(EXPECTED_TOOLS)
         assert len(health["surface_sha256"]) == 64
         assert health["last_maintenance"]

@@ -6,6 +6,8 @@ from pathlib import Path
 from pydantic import AliasChoices, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from . import __version__
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -64,7 +66,7 @@ class Settings(BaseSettings):
     request_concurrency: int = Field(default=4, ge=1, le=10)
     maintenance_interval_seconds: int = Field(default=3600, ge=60)
     enable_writes: bool = False
-    version: str = "0.5.0b2"
+    version: str = __version__
     file_download_hosts: list[str] = Field(default_factory=list)
 
     @field_validator("public_base_url")

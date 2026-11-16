@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0b3 - draft estimate editing
+
+- Change a draft estimate’s subject, append free-form or catalog rows, and remove
+  existing rows by ID. Combine these edits with existing row updates in one preview.
+- Review the subject and row changes before approval. Applying an approved edit
+  rechecks the draft and verifies the subject, row identities, order and content.
+- Update pypdf to 7.0.0 for PDF extraction, Ruff to 0.17.4 for development and
+  the pinned setup-uv action to 10.3.3 for CI.
+- Add English and French Sellsy setup guides.
+
 ## 0.5.0b2 - MCP SDK v2
 
 - Migrate from `FastMCP` to the official SDK 2.3 `MCPServer` API and configure
