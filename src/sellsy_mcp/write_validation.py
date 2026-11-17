@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from html.parser import HTMLParser
 from typing import Any
 
 from .errors import ToolError
@@ -59,6 +60,36 @@ def snapshot(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+class LineBreaks(HTMLParser):
+    """Locate equivalent self-closing line break tags without rewriting other HTML."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.replacements: list[tuple[int, int, int]] = []
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        raw = self.get_starttag_text()
+        if tag == "br" and not attrs and raw in {"<br/>", "<br />"}:
+            line, column = self.getpos()
+            self.replacements.append((line - 1, column, len(raw)))
+
+
+def canonical_line_breaks(description: str) -> str:
+    if "<br/>" not in description and "<br />" not in description:
+        return description
+    parser = LineBreaks()
+    try:
+        parser.feed(description)
+        parser.close()
+    except AssertionError:
+        return description
+    lines = description.split("\n")
+    for line, column, length in reversed(parser.replacements):
+        text = lines[line]
+        lines[line] = text[:column] + "<br>" + text[column + length :]
+    return "\n".join(lines)
+
+
 def mismatches(expected: Any, actual: Any, path: str = "") -> list[str]:
     if isinstance(expected, dict):
         if not isinstance(actual, dict):
@@ -89,6 +120,13 @@ def mismatches(expected: Any, actual: Any, path: str = "") -> list[str]:
                 return []
         except InvalidOperation:
             pass
+    if (
+        path.startswith("rows[")
+        and path.endswith("].description")
+        and isinstance(expected, str)
+        and isinstance(actual, str)
+    ):
+        return [] if canonical_line_breaks(expected) == canonical_line_breaks(actual) else [path]
     return [] if expected == actual else [path]
 
 

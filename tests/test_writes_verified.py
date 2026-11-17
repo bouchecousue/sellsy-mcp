@@ -90,6 +90,45 @@ async def test_update_verified_or_durable_unknown_without_replay(runtime_tools, 
         assert [row["id"] for row in sent["rows"]] == [1, 2]
 
 
+@pytest.mark.parametrize(
+    "description, verified",
+    [
+        ("Wi-Fi<br />PoE", True),
+        ("Wi-Fi<br/>PoE", True),
+        ("Wi-Fi PoE", False),
+        ("Wi-Fi<br />Sans PoE", False),
+        ('<span title="Wi-Fi<br />PoE">Wi-Fi<br />PoE</span>', False),
+    ],
+)
+async def test_estimate_update_verifies_equivalent_html_breaks(runtime_tools, description, verified):
+    _, _, tools = runtime_tools
+    before = draft()
+    before["rows"][0]["description"] = "Wi-Fi<br>PoE"
+    if description.startswith("<span"):
+        before["rows"][0]["description"] = '<span title="Wi-Fi<br>PoE">Wi-Fi<br>PoE</span>'
+    after = copy.deepcopy(before)
+    after["rows"][0].update(unit_amount="216.05", description=description)
+    with respx.mock as router:
+        router.get(BASE + "/estimates/123").mock(
+            side_effect=[Response(200, json=value) for value in (before, before, after)]
+        )
+        write = router.put(BASE + "/estimates/123").respond(200, json=after)
+        preview = await tools["sellsy_prepare_estimate_update"](
+            EstimateUpdate(estimate_id=123, rows=[EstimateRowPatch(id=1, unit_amount="216.05")])
+        )
+        result = await tools["sellsy_apply_estimate_update"](
+            ApplyManifest(manifest_id=preview["manifest_id"], approved=True)
+        )
+        assert write.call_count == 1
+        assert (
+            json.loads(write.calls[0].request.content)["rows"][0]["description"]
+            == before["rows"][0]["description"]
+        )
+    assert result["readback_verified"] is verified
+    if not verified:
+        assert result["mismatched_fields"] == ["rows[0].description"]
+
+
 async def test_wrong_operation_and_stale_preconditions_do_not_consume_manifest(runtime_tools):
     runtime, _, tools = runtime_tools
     with respx.mock as router:

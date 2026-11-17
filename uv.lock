@@ -991,7 +991,7 @@ wheels = [
 
 [[package]]
 name = "sellsy-mcp-community"
-version = "0.5.0b3"
+version = "0.5.0b4"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },

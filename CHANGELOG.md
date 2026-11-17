@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0b4 - estimate readback
+
+- Accept equivalent HTML line break tags (`<br>`, `<br/>`, and `<br />`) in estimate
+  row descriptions during readback. Other differences still trigger a mismatch.
+
 ## 0.5.0b3 - draft estimate editing
 
 - Change a draft estimate’s subject, append free-form or catalog rows, and remove
