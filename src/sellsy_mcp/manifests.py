@@ -4,6 +4,7 @@ import hashlib
 import secrets
 import time
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from .config import Settings
 from .store import Store, dumps, loads
@@ -11,6 +12,30 @@ from .store import Store, dumps, loads
 
 def fingerprint(value: Any) -> str:
     return hashlib.sha256(dumps(value).encode()).hexdigest()
+
+
+ESTIMATE_PDF_KEY_FINGERPRINT = "estimate_pdf_key_v1"
+
+
+def stable_estimate_state(document: dict[str, Any]) -> dict[str, Any]:
+    """The exact Sellsy PDF route rotates its access key on read."""
+    link = document.get("pdf_link")
+    if not isinstance(link, str):
+        return document
+    try:
+        url = urlsplit(link)
+        parameters = parse_qsl(url.query, keep_blank_values=True, strict_parsing=True, max_num_fields=3)
+    except ValueError:
+        return document
+    if (url.scheme, url.netloc, url.path, url.fragment) != ("https", "file.sellsy.com", "/", ""):
+        return document
+    if sorted(key for key, _ in parameters) != ["display", "id", "key"]:
+        return document
+    query = dict(parameters)
+    if not all(query.values()):
+        return document
+    stable_query = urlencode({"id": query["id"], "key": "rotating", "display": query["display"]})
+    return {**document, "pdf_link": url._replace(query=stable_query).geturl()}
 
 
 CHANGE_SECTIONS = ("identity_status", "rows", "relations", "commercial_header", "other_fields")

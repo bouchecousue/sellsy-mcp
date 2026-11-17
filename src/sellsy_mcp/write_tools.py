@@ -5,7 +5,13 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from .errors import ToolError, error_result
-from .manifests import changed_sections, fingerprint, section_fingerprints
+from .manifests import (
+    ESTIMATE_PDF_KEY_FINGERPRINT,
+    changed_sections,
+    fingerprint,
+    section_fingerprints,
+    stable_estimate_state,
+)
 from .models import (
     ApplyManifest,
     EstimateCreate,
@@ -80,11 +86,17 @@ async def apply_operation(runtime: Runtime, params: ApplyManifest, operation: st
             if operation == "estimate.update":
                 await validate_estimate_rows(client, manifest["payload"].get("rows", []))
             before = await client.get(f"/estimates/{object_id}")
-            if fingerprint(before) != manifest["before_fingerprint"]:
+            state = before
+            if (
+                operation == "estimate.update"
+                and manifest["checks"].get("fingerprint_version") == ESTIMATE_PDF_KEY_FINGERPRINT
+            ):
+                state = stable_estimate_state(before)
+            if fingerprint(state) != manifest["before_fingerprint"]:
                 raise ToolError(
                     "stale_manifest",
                     "Le devis a changé ; préparer un nouveau manifeste.",
-                    changed_sections=changed_sections(manifest["checks"], before),
+                    changed_sections=changed_sections(manifest["checks"], state),
                 )
             if operation == "estimate.update":
                 if before.get("status") != "draft":
@@ -344,14 +356,19 @@ def register_estimate_tools(mcp: MCPServer, runtime: Runtime) -> None:
             raise ValueError("Un coût modifié doit être visible dans l’aperçu approuvé.")
         live = await client.get(f"/estimates/{params.estimate_id}")
         payload, expected, diff = await estimate_update_plan(client, live, params)
+        state = stable_estimate_state(live)
         manifest = runtime.manifests.create(
             grant_id=grant_id,
             operation="estimate.update",
             object_type="estimate",
             object_id=str(params.estimate_id),
             payload=payload,
-            before_fingerprint=fingerprint(live),
-            checks={"expected": expected, "before_sections": section_fingerprints(live)},
+            before_fingerprint=fingerprint(state),
+            checks={
+                "expected": expected,
+                "before_sections": section_fingerprints(state),
+                "fingerprint_version": ESTIMATE_PDF_KEY_FINGERPRINT,
+            },
         )
         manifest["diff"] = diff
         return _without_costs(manifest, params.include_costs_in_preview)

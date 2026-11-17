@@ -129,6 +129,41 @@ async def test_estimate_update_verifies_equivalent_html_breaks(runtime_tools, de
         assert result["mismatched_fields"] == ["rows[0].description"]
 
 
+@pytest.mark.parametrize("change", ["key_only", "pdf_id", "missing_key", "pdf_display", "subject"])
+async def test_update_checks_pdf_identity_and_business_state_across_signed_key_rotation(
+    runtime_tools, change
+):
+    _, _, tools = runtime_tools
+    before = {**draft(), "pdf_link": "https://file.sellsy.com/?id=42&key=synthetic-old&display=1"}
+    live = copy.deepcopy(before)
+    live["pdf_link"] = "https://file.sellsy.com/?id=42&key=synthetic-new&display=1"
+    if change == "pdf_id":
+        live["pdf_link"] = live["pdf_link"].replace("id=42", "id=43")
+    if change == "missing_key":
+        live["pdf_link"] = "https://file.sellsy.com/?id=42&display=1"
+    if change == "pdf_display":
+        live["pdf_link"] = live["pdf_link"].replace("display=1", "display=0")
+    if change == "subject":
+        live["subject"] = "Autre objet"
+    after = copy.deepcopy(live)
+    after["rows"][0]["unit_amount"] = "216.05"
+    with respx.mock(assert_all_called=False) as router:
+        router.get(BASE + "/estimates/123").mock(
+            side_effect=[Response(200, json=value) for value in (before, live, after)]
+        )
+        apply = router.put(BASE + "/estimates/123").respond(200, json=after)
+        preview = await tools["sellsy_prepare_estimate_update"](
+            EstimateUpdate(estimate_id=123, rows=[EstimateRowPatch(id=1, unit_amount="216.05")])
+        )
+        result = await tools["sellsy_apply_estimate_update"](
+            ApplyManifest(manifest_id=preview["manifest_id"], approved=True)
+        )
+    if change == "key_only":
+        assert apply.call_count == 1 and result["readback_verified"], result.get("error")
+    else:
+        assert not apply.called and result["error"]["code"] == "stale_manifest"
+
+
 async def test_wrong_operation_and_stale_preconditions_do_not_consume_manifest(runtime_tools):
     runtime, _, tools = runtime_tools
     with respx.mock as router:

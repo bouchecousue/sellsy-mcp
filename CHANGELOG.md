@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0b5 - draft estimate approval
+
+- Allow a draft estimate update when Sellsy rotates only the temporary PDF link key.
+  Changes to the PDF identity, display option, or estimate still invalidate the preview.
+
 ## 0.5.0b4 - estimate readback
 
 - Accept equivalent HTML line break tags (`<br>`, `<br/>`, and `<br />`) in estimate
